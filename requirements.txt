@@ -1,0 +1,10 @@
+ImageIO==2.37.3
+lazy-loader==0.5
+networkx==3.6.1
+numpy==2.4.3
+packaging==26.0
+pillow==12.1.1
+-e git+https://github.com/campagnola/pyabc.git@4c22a70a0f40ff82f608ffc19a1ca51a153f8c24#egg=pyabc&subdirectory=../../../src/pyabc
+scikit-image==0.26.0
+scipy==1.17.1
+tifffile==2026.3.3
