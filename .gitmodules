@@ -1,0 +1,3 @@
+[submodule "src/pyabc"]
+	path = src/pyabc
+	url = https://github.com/campagnola/pyabc.git
