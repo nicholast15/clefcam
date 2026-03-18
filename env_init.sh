@@ -2,4 +2,4 @@
 python -m venv venv
 source venv/bin/activate
 python -m pip install -r requirements.txt
-python -i src/hough_test.py
+python -i main.py
