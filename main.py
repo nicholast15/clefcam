@@ -15,13 +15,18 @@ output: tuple representing the Y-coordinate of each line of the staff, in pixels
         can also return angle input image is rotated by (degrees)
 '''
 def staff_lines(image):
-    test_angles = np.linspace(-np.pi / 2, np.pi / 2, 360, endpoint=False)
+    tested_angles = np.linspace(-np.pi / 4, np.pi / 4, 180, endpoint=False)
+    for i in range(0, tested_angles.size):  #check within 45deg of horizontal
+         if tested_angles[i] >=0:           #refactor: make more parameterizable tested_angle function, or houghpeak function
+            tested_angles[i] += np.pi/4
+        else:
+            tested_angles[i] -= np.pi/4
     h, theta, d = ski.transform.hough_line(image, theta=test_angles)
 
     accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=5, num_peaks=5)
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return -1*dist, np.rad2deg(np.mean(angles))
-    
+
 
 #for debugging
 def imshow(image, isGray=True):
@@ -31,8 +36,7 @@ def imshow(image, isGray=True):
         plt.imshow(image)
     plt.show()
 
-def main():
-    filepath = "Img/blow_single.png" #todo: make commandline arg
+def main(filepath):
     im = ski.io.imread(filepath)
 
     #Preprocessing
@@ -45,7 +49,8 @@ def main():
         im = ski.util.img_as_ubyte(im)
 
     im = ski.util.invert(im)    #Its preferable for features to be represented by 255
-    #imshow(im)
+    imshow(im)
 
     #Staff line location
     lines, rotation = staff_lines(im)
+    print(lines, rotation)
