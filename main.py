@@ -15,13 +15,14 @@ output: tuple representing the Y-coordinate of each line of the staff, in pixels
         can also return angle input image is rotated by (degrees)
 '''
 def staff_lines(image):
+    print("hi")
     tested_angles = np.linspace(-np.pi / 4, np.pi / 4, 180, endpoint=False)
     for i in range(0, tested_angles.size):  #check within 45deg of horizontal
-         if tested_angles[i] >=0:           #refactor: make more parameterizable tested_angle function, or houghpeak function
+        if tested_angles[i] >=0:           #refactor: make more parameterizable tested_angle function, or houghpeak function
             tested_angles[i] += np.pi/4
         else:
             tested_angles[i] -= np.pi/4
-    h, theta, d = ski.transform.hough_line(image, theta=test_angles)
+    h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
 
     accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=5, num_peaks=5)
     dist = dist.astype(np.int32) #max image height of 2^32-1
