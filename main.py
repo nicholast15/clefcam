@@ -28,6 +28,23 @@ def staff_lines(image):
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return -1*dist, np.rad2deg(np.mean(angles))
 
+def template_match_left_align(image, template, confidence):
+    res = cv.matchTemplate(image, template, cv.TM_CCOEFF_NORMED) #COEFF NORMED found best in experiments
+    thres = np.percentile(res, 99.995)         #by experimentation, should use more advanced thresholding technique
+    cand = np.where(res >= thres)
+
+    leftmost = cand[1].min()                   #find the leftmost candidate
+    clefs = np.where(cand <= leftmost * 1.4)   #threshold only those closeby
+
+
+'''
+input: image, size of template to use (approz size of clef can be found from staff lines)
+output: string identifying best clef match, (clef locations?)
+'''
+def clef_match(image, size):
+    clefs = ["GClef", "FClef"]  #clefs to check #todo: add percussion
+
+
 
 #for debugging
 def imshow(image, isGray=True):
@@ -55,3 +72,14 @@ def main(filepath):
     #Staff line location
     lines, rotation = staff_lines(im)
     print(lines, rotation)
+
+    #rotate the image based on rotation
+
+    #slice the image into stripes based on groups of 5 in lines
+    #maybe do this after finding clefs- multiple template matches can also give locations
+
+    #check the clef and signature
+    sizes = ["32", "64", "128"]         #template sizes to allow for diff res images
+
+
+
