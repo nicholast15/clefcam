@@ -3,10 +3,10 @@ import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
 
-img = cv.imread('Img/fur_elise.png', cv.IMREAD_GRAYSCALE)
+img = cv.imread('Img/blow.png', cv.IMREAD_GRAYSCALE)
 assert img is not None, "file could not be read, check with os.path.exists()"
 img2 = img.copy()
-template = cv.imread('Img/templates/GClef.png', cv.IMREAD_GRAYSCALE)
+template = cv.imread('Img/templates/GClef_med.png', cv.IMREAD_GRAYSCALE)
 assert template is not None, "file could not be read, check with os.path.exists()"
 w, h = template.shape[::-1]
 
@@ -18,7 +18,7 @@ methods = ['TM_CCOEFF', 'TM_CCOEFF_NORMED', 'TM_CCORR',     #TM_CCORR* and TM_SQ
 
 img = img2.copy()
 res = cv.matchTemplate(img,template,cv.TM_CCOEFF_NORMED)
-threshold = np.percentile(res, 99.999)
+threshold = np.percentile(res, 99.995)
 print(threshold)
 loc = np.where( res >= threshold)
 for pt in zip(*loc[::-1]):

@@ -6,6 +6,7 @@ Stefan Py and Nicholas Trimble, 03/2026
 '''
 import numpy as np
 import skimage as ski
+import cv2 as cv
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -15,7 +16,6 @@ output: tuple representing the Y-coordinate of each line of the staff, in pixels
         can also return angle input image is rotated by (degrees)
 '''
 def staff_lines(image):
-    print("hi")
     tested_angles = np.linspace(-np.pi / 4, np.pi / 4, 180, endpoint=False)
     for i in range(0, tested_angles.size):  #check within 45deg of horizontal
         if tested_angles[i] >=0:           #refactor: make more parameterizable tested_angle function, or houghpeak function
@@ -28,21 +28,48 @@ def staff_lines(image):
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return -1*dist, np.rad2deg(np.mean(angles))
 
-def template_match_left_align(image, template, confidence):
+'''
+performs singular template matching, returning score and location of best match
+'''
+def template_match(image, template):
     res = cv.matchTemplate(image, template, cv.TM_CCOEFF_NORMED) #COEFF NORMED found best in experiments
-    thres = np.percentile(res, 99.995)         #by experimentation, should use more advanced thresholding technique
-    cand = np.where(res >= thres)
-
-    leftmost = cand[1].min()                   #find the leftmost candidate
-    clefs = np.where(cand <= leftmost * 1.4)   #threshold only those closeby
+    min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
+    return max_val, max_loc
 
 
 '''
-input: image, size of template to use (approz size of clef can be found from staff lines)
+input: stripe of input image containing one line of the staff (and therefore one clef)
 output: string identifying best clef match, (clef locations?)
 '''
-def clef_match(image, size):
+def clef_match(line):
+    template_root = "Img/templates/"
+    sizes = [32, 64, 128]       #template sizes to allow for diff res images
     clefs = ["GClef", "FClef"]  #clefs to check #todo: add percussion
+    score = []
+
+    #pick size to template with
+    h = line.shape[0]
+    if h < sizes[0]:    #verify we have a small enough template
+        print(f"Error: Minimum template size {sizes[0]} exceeds height of line {h}")
+        return
+    else:
+        size = sizes[0]     #default to smallest
+        for i in range(1, len(sizes)):  #check if there is a larger template usable
+            if sizes[i] > h:
+                break
+            size = sizes[i]
+        print(size)
+
+        for clef in clefs:
+            template_file = template_root + clef + '_' + str(size) + ".png"
+            template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
+            assert template is not None, "Template file " + template_file + " not found"
+            max_val, max_loc = template_match(line, template)
+            score.append(max_val)
+
+        match_i = np.argmax(np.array(score))
+        match = clefs[match_i]
+        return match
 
 
 
@@ -74,12 +101,11 @@ def main(filepath):
     print(lines, rotation)
 
     #rotate the image based on rotation
+    #for now assume horizontal: below slicing will need to account for lines being horiz+vert comps
 
     #slice the image into stripes based on groups of 5 in lines
-    #maybe do this after finding clefs- multiple template matches can also give locations
 
     #check the clef and signature
-    sizes = ["32", "64", "128"]         #template sizes to allow for diff res images
 
 
 
