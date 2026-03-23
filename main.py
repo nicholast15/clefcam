@@ -24,9 +24,28 @@ def staff_lines(image):
             tested_angles[i] -= np.pi/4
     h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
 
-    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=5, num_peaks=5)
+    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=5)
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return -1*dist, np.rad2deg(np.mean(angles))
+
+'''
+Simple segmentation algo, something more advanced from class could be used 
+but this is easiest given the rigid formatting of the image
+Input: image dimensions, staff line y coordinates
+Output: Array representing the horizontal borders to slice image 
+'''
+def staff_borders(lines, dims):
+    assert len(lines) % 5 == 0, "Detected staff lines not a multiple of 5; staff_borders will not work"
+    v, h = dims
+
+    borders = [0]       #start with top
+
+    for i in range(4, len(lines)-5, 5):
+        midpt = (lines[i] + lines[i+1]) // 2    #floor division; need whole number pixel
+        borders.append(int(midpt))
+
+    borders.append(v-1) #add bottom
+    return borders
 
 '''
 performs singular template matching, returning score and location of best match
@@ -60,14 +79,14 @@ def clef_match(line):
             size = sizes[i]
         print(size)
 
-        for clef in clefs:
+        for clef in clefs:  #check all clefs at the determined size
             template_file = template_root + clef + '_' + str(size) + ".png"
             template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
             assert template is not None, "Template file " + template_file + " not found"
             max_val, max_loc = template_match(line, template)
             score.append(max_val)
 
-        match_i = np.argmax(np.array(score))
+        match_i = np.argmax(np.array(score))    #find the clef with the highest match value
         match = clefs[match_i]
         return match
 
@@ -99,6 +118,7 @@ def main(filepath):
     #Staff line location
     lines, rotation = staff_lines(im)
     print(lines, rotation)
+    staff_borders(lines, im.shape)
 
     #rotate the image based on rotation
     #for now assume horizontal: below slicing will need to account for lines being horiz+vert comps
