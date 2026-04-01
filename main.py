@@ -24,7 +24,7 @@ def staff_lines(image):
             tested_angles[i] -= np.pi/4
     h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
 
-    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=5)
+    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=3)
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return -1*dist, np.rad2deg(np.mean(angles))
 
@@ -35,6 +35,7 @@ Input: image dimensions, staff line y coordinates
 Output: Array representing the horizontal borders to slice image 
 '''
 def staff_borders(lines, dims):
+    print(lines)
     assert len(lines) % 5 == 0, "Detected staff lines not a multiple of 5; staff_borders will not work"
     v, h = dims
 
@@ -72,13 +73,14 @@ def template_match(image, template):
 
 '''
 input: stripe of input image containing one line of the staff (and therefore one clef)
-output: string identifying best clef match, (clef locations?)
+output: string identifying best clef match, coordinate of the top right corner
 '''
 def clef_match(line):
     template_root = "Img/templates/"
-    sizes = [32, 64, 128]       #template sizes to allow for diff res images
+    sizes = [16, 32, 64, 128]       #template sizes to allow for diff res images
     clefs = ["GClef", "FClef"]  #clefs to check #todo: add percussion
     score = []
+    locns = []
 
     #pick size to template with
     h = line.shape[0]
@@ -98,12 +100,15 @@ def clef_match(line):
             template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
             assert template is not None, "Template file " + template_file + " not found"
             max_val, max_loc = template_match(line, template)
-            #print(max_val, max_loc)
+            print(max_val, max_loc)
+            topright = (max_loc[0]+ template.shape[1], max_loc[1]) #these indices are opposing
             score.append(max_val)
+            locns.append(topright)
 
         match_i = np.argmax(np.array(score))    #find the clef with the highest match value
         match = clefs[match_i]
-        return match
+        coord = locns[match_i]
+        return match, coord
 
 
 
@@ -140,11 +145,11 @@ def main(filepath):
     #slice the image into stripes based on groups of 5 in lines
     borders = staff_borders(lines, im.shape)
     slices = staff_slice(im, borders)
-    #for s in slices:
-    #    imshow(s)
-
+    for s in slices:
     #check the clef and signature
-    clef = clef_match(ski.util.invert(slices[0])) #just check for clef on the first line
-    print(clef)
+        clef, coord = clef_match(ski.util.invert(slices[0])) #just check for clef on the first line
+        print(clef, coord) #coord uses cartesian, while the iamge follows image convention
+        s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
+        imshow(s)
 
 
