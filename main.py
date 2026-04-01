@@ -8,6 +8,7 @@ import numpy as np
 import skimage as ski
 import cv2 as cv
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 '''
 input: greyscale image of a single bar of the staff
@@ -26,6 +27,18 @@ def staff_lines(image):
     accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=3)
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return -1*dist, np.rad2deg(np.mean(angles))
+
+'''
+input: slice of an image with clef, time signature, sharps/flats removed
+output: x coordinates of bar lines and note tails that are exactly vertical
+'''
+def bar_tail_lines(image):
+    tested_angles = np.linspace(-0.01, 0.01, 2, endpoint=False)
+    h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
+
+    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=10)
+    dist = dist.astype(np.int32)
+    return dist
 
 '''
 Simple segmentation algo, something more advanced from class could be used 
@@ -204,6 +217,8 @@ def main(filepath):
         clef, coord = clef_match(ski.util.invert(slices[0])) #just check for clef on the first line
         print(clef, coord) #coord uses cartesian, while the iamge follows image convention
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
+        print(bar_tail_lines(s))
         imshow(s)
+
 
 
