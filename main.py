@@ -8,7 +8,6 @@ import numpy as np
 import skimage as ski
 import cv2 as cv
 import matplotlib.pyplot as plt
-from matplotlib import cm
 
 '''
 input: greyscale image of a single bar of the staff
@@ -109,6 +108,60 @@ def clef_match(line):
         match = clefs[match_i]
         coord = locns[match_i]
         return match, coord
+
+'''
+input: image of notes in one bar line, y-coordinate of staff lines, x-coordinate of bar lines
+output: xy location of notes on image
+'''
+def note_detection(image, ycoord, xcoord):
+
+    height, width = image.shape
+
+    lines = np.ones((height, width), dtype=np.uint8) * 255
+    for i in range(len(ycoord)):
+        for j in range(width):
+            lines[ycoord[i]][j] = 0
+
+    for i in range(len(xcoord)):
+        for j in range(height):
+            lines[j][xcoord[i]] = 0
+            lines[j][xcoord[i]+1] = 0
+            lines[j][xcoord[i]-1] = 0
+
+
+    image_nolines = ski.util.invert(np.clip(ski.util.invert(image) - ski.util.invert(lines),0,255))
+
+    denoised = ski.restoration.denoise_nl_means(image_nolines, h=0.05, fast_mode=True)
+
+    enhanced = ski.exposure.equalize_adapthist(denoised)
+
+    thresh = ski.filters.threshold_otsu(enhanced)
+    binary = enhanced > thresh
+
+    #morph = morphology.area_opening(binary,4,8)
+    morph = ski.morphology.area_closing(binary,8,8)
+
+    thresh = ski.filters.threshold_otsu(morph)
+    morph = morph > thresh
+    
+    edges = ski.feature.canny(morph, sigma=2.0, low_threshold=0.1, high_threshold=0.5)
+
+    # Detect two radii
+    hough_radii = np.arange(4, 10, 1, dtype=int)
+    hough_res = ski.transform.hough_circle(edges, hough_radii)
+
+    accums, cx, cy, radii = ski.transform.hough_circle_peaks(hough_res, hough_radii,min_xdistance=15, min_ydistance=10, threshold = 0.3)
+
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
+    image = ski.color.gray2rgb(image)
+    for center_y, center_x, radius in zip(cy, cx, radii):
+        circy, circx = ski.draw.circle_perimeter(center_y, center_x, radius, shape=image.shape)
+        image[circy, circx] = (255, 0, 0)
+
+    ax.imshow(image, cmap=plt.cm.gray)
+    plt.show()
+
+    return cx, cy, radii
 
 
 

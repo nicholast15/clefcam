@@ -93,7 +93,7 @@ def blob():
 
 #blob()
 
-def houghcircles(image, ycoord):
+def houghcircles(image, ycoord, xcoord):
 
     height, width = image.shape
 
@@ -101,14 +101,12 @@ def houghcircles(image, ycoord):
     for i in range(len(ycoord)):
         for j in range(width):
             lines[ycoord[i]][j] = 0
-            #lines[ycoord[i]+1][j] = 0
-            #lines[ycoord[i]-1][j] = 0
-    
-    #for i in range(len(xcoord)):
-    #    for j in range(height):
-    #        lines[j][xcoord[i]] = 0
-    #        lines[j][xcoord[i]+1] = 0
-    #        lines[j][xcoord[i]-1] = 0
+
+    for i in range(len(xcoord)):
+        for j in range(height):
+            lines[j][xcoord[i]] = 0
+            lines[j][xcoord[i]+1] = 0
+            lines[j][xcoord[i]-1] = 0
 
 
     image_nolines = ski.util.invert(np.clip(ski.util.invert(image) - ski.util.invert(lines),0,255))
@@ -120,8 +118,8 @@ def houghcircles(image, ycoord):
     thresh = threshold_otsu(enhanced)
     binary = enhanced > thresh
 
-    morph = morphology.area_opening(binary,4,8)
-    morph = morphology.area_closing(morph,4,8)
+    #morph = morphology.area_opening(binary,4,8)
+    morph = morphology.area_closing(binary,8,8)
 
     thresh = threshold_otsu(morph)
     morph = morph > thresh
@@ -133,7 +131,7 @@ def houghcircles(image, ycoord):
     io.imshow(edges)
     plt.show()
     # Detect two radii
-    hough_radii = np.arange(4, 5, 1, dtype=int)
+    hough_radii = np.arange(4, 10, 1, dtype=int)
     hough_res = hough_circle(edges, hough_radii)
 
     # Select the most prominent 3 circles
@@ -149,7 +147,7 @@ def houghcircles(image, ycoord):
     ax.imshow(image, cmap=plt.cm.gray)
     plt.show()
 
-    return 0
+    return cx, cy, radii
 
 #image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img\TEST_MUSIC_single_line_nowriting_V2.png")))
 #image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img/fur_elise_one_line.png")))
@@ -162,5 +160,5 @@ ycoord = staff_lines(image)
 #xcoord = vert_lines(image)
 
 
-houghcircles(image, ycoord)
+cx, cy, radii = houghcircles(image, ycoord)
 
