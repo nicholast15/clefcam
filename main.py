@@ -181,35 +181,34 @@ def note_detection(image, ycoord, xcoord):
     return cx, cy, radii
 
 '''
-input: image of notes in one bar line, x and y coordinates of notes, y-coordinate of staff lines, x-coordinate of bar lines, clef and key
+input: y coordinates of a note, y-coordinate of staff lines
 output: ABC notation of the music
 '''
 
-def note_tone(image, cx, cy, radii, staff_ycoord, vert_xcoord clef, key):
-    ABC = []
-    np.sort(staff_ycoord)
+def note_pos(y, staff_ycoord):
     gap = abs(staff_ycoord[0]-staff_ycoord[1])
-    for i in range(cx):
-        dist = cy[i] - staff_ycoord[0]
-        pos = np.round(dist/gap*2)
-        timing = note_type(image,cx[i],cy[i],radii[i],vert_xcoord)
-        
-    return ABC
+    dist = y - staff_ycoord[0]
+    pos = np.round(dist/gap*2) 
+    return pos
 
 '''
 input: image of notes in one bar line, x and y coordinate of a note, x-coordinate of bar lines
 output: note type
 '''
-def note_type(image, x, y, radius, vert_xcoord):
+def note_type(image, cx, cy, radii, vert_xcoord, ind):
     tot = 0
     count = 0
+    radius = radii[ind]
+    x = cx[ind]
+    y = cy[ind]
+
     for i in range(np.floor(radius/2)*2+1):
         for j in range(np.floor(radius/2)*2+1):
             tot += image[y + i - np.floor(radius/2),x + j - np.floor(radius/2)]
             count += 1
 
     if tot/count > 0.5:
-        return 4
+        return 0
     else:
         for i in range(len(vert_xcoord)):
             if vert_xcoord[i] > np.floor(x - radius*2) or vert_xcoord[i] < np.floor(x + radius*2):
@@ -246,6 +245,7 @@ def main(filepath):
 
     #Staff line location
     lines, rotation = staff_lines(im)
+    
     #print(lines, rotation)
 
     #rotate the image based on rotation
@@ -262,13 +262,16 @@ def main(filepath):
     s1 = slices[0][:, coord2[0]:]
     imshow(s1)
 
+    lines, rotation = staff_lines(slices[-1])
+    vert_lines = bar_tail_lines(slices[-1])
+    note_detection(ski.util.invert(slices[-1]),lines,vert_lines)
+
     for s in slices[1:]:
         #find the clef to crop - TODO: sharps and flats as well
         clef, coord = templ_match(ski.util.invert(s), "clef")
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
         print(bar_tail_lines(s))
         imshow(s)
-
 
 
 
