@@ -25,8 +25,9 @@ def staff_lines(image):
     h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
 
     accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=3)
+    dist = np.sort(-1*dist)
     dist = dist.astype(np.int32) #max image height of 2^32-1
-    return -1*dist, np.rad2deg(np.mean(angles))
+    return dist, np.rad2deg(np.mean(angles))
 
 '''
 input: slice of an image with clef, time signature, sharps/flats removed
