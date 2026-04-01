@@ -54,7 +54,7 @@ def staff_borders(lines, dims, padding = 2):
     dist = lines[2] - lines[0]  #get dist btn middle and top of staff
     distpad = dist * padding    #pad a bit to get area around staff
 
-    for i in range(2, len(lines)-5, 5):
+    for i in range(2, len(lines), 5):
         top = lines[i] - distpad
         bot = lines[i] + distpad
         borders.append(int(top))
@@ -85,13 +85,19 @@ def template_match(image, template):
 
 
 '''
-input: stripe of input image containing one line of the staff (and therefore one clef)
-output: string identifying best clef match, coordinate of the top right corner
+input: stripe of input image containing one line of the staff
+output: string identifying best match to feature, coordinate of the top right corner
 '''
-def clef_match(line):
+def templ_match(line, feature): #generalize this for more templating
+    if feature == "clef":
+        feats = ["GClef", "FClef"]
+    elif feature == "ts":
+        feats = ["4-4", "3-4", "2-2"]
+    else:
+        raise RuntimeError #not a valid feature to check
+
     template_root = "Img/templates/"
     sizes = [16, 32, 64, 128]       #template sizes to allow for diff res images
-    clefs = ["GClef", "FClef"]  #clefs to check #todo: add percussion
     score = []
     locns = []
 
@@ -108,18 +114,18 @@ def clef_match(line):
             size = sizes[i]
         #print(size)
 
-        for clef in clefs:  #check all clefs at the determined size
-            template_file = template_root + clef + '_' + str(size) + ".png"
+        for f in feats:  #check all features at the determined size
+            template_file = template_root + f + '_' + str(size) + ".png"
             template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
             assert template is not None, "Template file " + template_file + " not found"
             max_val, max_loc = template_match(line, template)
-            print(max_val, max_loc)
+            print(f, max_val, max_loc)
             topright = (max_loc[0]+ template.shape[1], max_loc[1]) #these indices are opposing
             score.append(max_val)
             locns.append(topright)
 
         match_i = np.argmax(np.array(score))    #find the clef with the highest match value
-        match = clefs[match_i]
+        match = feats[match_i]
         coord = locns[match_i]
         return match, coord
 
@@ -250,13 +256,21 @@ def main(filepath):
     #slice the image into stripes based on groups of 5 in lines
     borders = staff_borders(lines, im.shape)
     slices = staff_slice(im, borders)
-    for s in slices:
-    #check the clef and signature
-        clef, coord = clef_match(ski.util.invert(slices[0])) #just check for clef on the first line
-        print(clef, coord) #coord uses cartesian, while the iamge follows image convention
+
+    clef1, coord1 = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
+    print(clef1, coord1) #coord uses cartesian, while the iamge follows image convention
+    ts, coord2 = templ_match(ski.util.invert(slices[0]), "ts")
+    print(ts, coord2)
+    s1 = slices[0][:, coord2[0]:]
+    imshow(s1)
+
+    for s in slices[1:]:
+        #find the clef to crop - TODO: sharps and flats as well
+        clef, coord = templ_match(ski.util.invert(s), "clef")
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
         print(bar_tail_lines(s))
         imshow(s)
+
 
 
 
