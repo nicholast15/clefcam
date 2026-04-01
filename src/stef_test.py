@@ -93,7 +93,7 @@ def blob():
 
 #blob()
 
-def houghcircles(image, ycoord, xcoord):
+def houghcircles(image, ycoord):
 
     height, width = image.shape
 
@@ -102,11 +102,11 @@ def houghcircles(image, ycoord, xcoord):
         for j in range(width):
             lines[ycoord[i]][j] = 0
 
-    for i in range(len(xcoord)):
-        for j in range(height):
-            lines[j][xcoord[i]] = 0
-            lines[j][xcoord[i]+1] = 0
-            lines[j][xcoord[i]-1] = 0
+    #for i in range(len(xcoord)):
+    #    for j in range(height):
+    #        lines[j][xcoord[i]] = 0
+    #        lines[j][xcoord[i]+1] = 0
+    #        lines[j][xcoord[i]-1] = 0
 
 
     image_nolines = ski.util.invert(np.clip(ski.util.invert(image) - ski.util.invert(lines),0,255))
@@ -146,8 +146,25 @@ def houghcircles(image, ycoord, xcoord):
 
     ax.imshow(image, cmap=plt.cm.gray)
     plt.show()
-
+    print(radii)
     return cx, cy, radii
+
+def note_type(image, x, y, radius, vert_xcoord):
+    tot = 0
+    count = 0
+    for i in range(np.floor(radius/2)*2+1):
+        for j in range(np.floor(radius/2)*2+1):
+            tot += image[y + i - np.floor(radius/2),x + j - np.floor(radius/2)]
+            count += 1
+
+    if tot/count > 0.5:
+        return 4
+    else:
+        for i in range(len(vert_xcoord)):
+            if vert_xcoord[i] > np.floor(x - radius*2) or vert_xcoord[i] < np.floor(x + radius*2):
+                return 2
+            else:
+                return 1
 
 #image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img\TEST_MUSIC_single_line_nowriting_V2.png")))
 #image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img/fur_elise_one_line.png")))
@@ -161,4 +178,5 @@ ycoord = staff_lines(image)
 
 
 cx, cy, radii = houghcircles(image, ycoord)
+
 

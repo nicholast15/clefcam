@@ -146,7 +146,6 @@ def note_detection(image, ycoord, xcoord):
     image_nolines = ski.util.invert(np.clip(ski.util.invert(image) - ski.util.invert(lines),0,255))
 
     denoised = ski.restoration.denoise_nl_means(image_nolines, h=0.05, fast_mode=True)
-
     enhanced = ski.exposure.equalize_adapthist(denoised)
 
     thresh = ski.filters.threshold_otsu(enhanced)
@@ -176,6 +175,45 @@ def note_detection(image, ycoord, xcoord):
     plt.show()
 
     return cx, cy, radii
+
+'''
+input: image of notes in one bar line, x and y coordinates of notes, y-coordinate of staff lines, x-coordinate of bar lines, clef and key
+output: ABC notation of the music
+'''
+
+def note_tone(image, cx, cy, radii, staff_ycoord, vert_xcoord clef, key):
+    ABC = []
+    np.sort(staff_ycoord)
+    gap = abs(staff_ycoord[0]-staff_ycoord[1])
+    for i in range(cx):
+        dist = cy[i] - staff_ycoord[0]
+        pos = np.round(dist/gap*2)
+        timing = note_type(image,cx[i],cy[i],radii[i],vert_xcoord)
+        
+    return ABC
+
+'''
+input: image of notes in one bar line, x and y coordinate of a note, x-coordinate of bar lines
+output: note type
+'''
+def note_type(image, x, y, radius, vert_xcoord):
+    tot = 0
+    count = 0
+    for i in range(np.floor(radius/2)*2+1):
+        for j in range(np.floor(radius/2)*2+1):
+            tot += image[y + i - np.floor(radius/2),x + j - np.floor(radius/2)]
+            count += 1
+
+    if tot/count > 0.5:
+        return 4
+    else:
+        for i in range(len(vert_xcoord)):
+            if vert_xcoord[i] > np.floor(x - radius*2) or vert_xcoord[i] < np.floor(x + radius*2):
+                return 2
+            else:
+                return 1
+
+
 
 
 
