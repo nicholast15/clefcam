@@ -272,7 +272,7 @@ def main(filepath):
 
     for s in slices[1:]:
         #find the clef to crop - TODO: sharps and flats as well
-        clef, coord = templ_match(ski.util.invert(s[:, :bound]), "clef")
+        clef, coord = templ_match(ski.util.invert(s), "clef")
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
         print(bar_tail_lines(s))
         imshow(s)
