@@ -16,7 +16,7 @@ from matplotlib import cm
 #image[idx, idx] = 255
 #image[draw_line(45, 25, 25, 175)] = 255
 #image[draw_line(25, 135, 175, 155)] = 255
-image = ski.io.imread("Img/blow_single_textless.png")
+image = ski.io.imread("Img/blow_single.png")
 image = ski.color.rgba2rgb(image)
 image = ski.color.rgb2gray(image)
 image = ski.util.img_as_ubyte(image)
@@ -24,7 +24,12 @@ image = ski.util.invert(image)
 
 # Classic straight-line Hough transform
 # Set a precision of 0.5 degree.
-tested_angles = np.linspace(-np.pi / 32, np.pi / 32, 180, endpoint=False)
+tested_angles = np.linspace(-0.01, 0.01, 2, endpoint=False)
+#for i in range(0, tested_angles.size):
+#    if tested_angles[i] >=0:
+#        tested_angles[i] += np.pi/4
+#    else:
+#        tested_angles[i] -= np.pi/4
 h, theta, d = hough_line(image, theta=tested_angles)
 
 # Generating figure 1
@@ -54,8 +59,8 @@ ax[2].set_ylim((image.shape[0], 0))
 ax[2].set_axis_off()
 ax[2].set_title('Detected lines')
 
-for _, angle, dist in zip(*hough_line_peaks(h, theta, d, min_distance=150)):
-    if dist > 225: #Check if lines are to the right of the time signature
+for _, angle, dist in zip(*hough_line_peaks(h, theta, d, min_distance=10)):
+    if dist != 0: #Check if lines are to the right of the time signature
         print(angle, dist)
         (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
         ax[2].axline((x0, y0), slope=np.tan(angle + np.pi / 2))
