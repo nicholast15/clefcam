@@ -24,7 +24,8 @@ def staff_lines(image):
             tested_angles[i] -= np.pi/4
     h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
 
-    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=3)
+    #filters lines to be at least 3 pix apart, and within 1% of strongest line
+    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=3, threshold=0.99*np.max(h))
     dist = np.sort(-1*dist)
     dist = dist.astype(np.int32) #max image height of 2^32-1
     return dist, np.rad2deg(np.mean(angles))
@@ -86,6 +87,7 @@ def template_match(image, template):
 
 
 '''
+single template matching for individual symbols on the staff
 input: stripe of input image containing one line of the staff
 output: string identifying best match to feature, coordinate of the top right corner
 '''
@@ -107,28 +109,28 @@ def templ_match(line, feature): #generalize this for more templating
     if h < sizes[0]:    #verify we have a small enough template
         print(f"Error: Minimum template size {sizes[0]} exceeds height of line {h}")
         return
-    else:
-        size = sizes[0]     #default to smallest
-        for i in range(1, len(sizes)):  #check if there is a larger template usable
-            if sizes[i] > h:
-                break
-            size = sizes[i]
-        #print(size)
 
-        for f in feats:  #check all features at the determined size
-            template_file = template_root + f + '_' + str(size) + ".png"
-            template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
-            assert template is not None, "Template file " + template_file + " not found"
-            max_val, max_loc = template_match(line, template)
-            print(f, max_val, max_loc)
-            topright = (max_loc[0]+ template.shape[1], max_loc[1]) #these indices are opposing
-            score.append(max_val)
-            locns.append(topright)
+    size = sizes[0]     #default to smallest
+    for i in range(1, len(sizes)):  #check if there is a larger template usable
+        if sizes[i] > h:
+            break
+        size = sizes[i]
+    #print(size)
 
-        match_i = np.argmax(np.array(score))    #find the clef with the highest match value
-        match = feats[match_i]
-        coord = locns[match_i]
-        return match, coord
+    for f in feats:  #check all features at the determined size
+        template_file = template_root + f + '_' + str(size) + ".png"
+        template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
+        assert template is not None, "Template file " + template_file + " not found"
+        max_val, max_loc = template_match(line, template)
+        print(f, max_val, max_loc)
+        topright = (max_loc[0]+ template.shape[1], max_loc[1]) #these indices are opposing
+        score.append(max_val)
+        locns.append(topright)
+
+    match_i = np.argmax(np.array(score))    #find the clef with the highest match value
+    match = feats[match_i]
+    coord = locns[match_i]
+    return match, coord
 
 '''
 input: image of notes in one bar line, y-coordinate of staff lines, x-coordinate of bar lines
@@ -262,6 +264,7 @@ def main(filepath):
     print(ts, coord2)
     s1 = slices[0][:, coord2[0]:]
     imshow(s1)
+    #key signature will be between staff and TS
 
     lines, rotation = staff_lines(slices[-1])
     vert_lines = bar_tail_lines(slices[-1])
@@ -269,7 +272,7 @@ def main(filepath):
 
     for s in slices[1:]:
         #find the clef to crop - TODO: sharps and flats as well
-        clef, coord = templ_match(ski.util.invert(s), "clef")
+        clef, coord = templ_match(ski.util.invert(s[:, :bound]), "clef")
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
         print(bar_tail_lines(s))
         imshow(s)
