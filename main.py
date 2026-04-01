@@ -33,18 +33,20 @@ but this is easiest given the rigid formatting of the image
 Input: image dimensions, staff line y coordinates
 Output: Array representing the horizontal borders to slice image 
 '''
-def staff_borders(lines, dims):
-    print(lines)
+def staff_borders(lines, dims, padding = 2):
     assert len(lines) % 5 == 0, "Detected staff lines not a multiple of 5; staff_borders will not work"
     v, h = dims
+    borders = []
 
-    borders = [0]       #start with top
+    dist = lines[2] - lines[0]  #get dist btn middle and top of staff
+    distpad = dist * padding    #pad a bit to get area around staff
 
-    for i in range(4, len(lines)-5, 5):
-        midpt = (lines[i] + lines[i+1]) // 2    #floor division; need whole number pixel
-        borders.append(int(midpt))
-
-    borders.append(v-1) #add bottom
+    for i in range(2, len(lines)-5, 5):
+        top = lines[i] - distpad
+        bot = lines[i] + distpad
+        borders.append(int(top))
+        borders.append(int(bot))
+    print(borders)
     return borders
 
 '''
@@ -53,10 +55,9 @@ Output: Array of images representing a line of bars each
 '''
 def staff_slice(image, borders):
     slices = []
-    i = 0
-    for j in range(0, len(borders)-1):
+    for j in range(0, len(borders)-1, 2):
         start = borders[j]
-        end = borders[j+1]-1    #dont include the start of the next slice
+        end = borders[j+1]
         slices.append(image[start:end])
         
     return slices
