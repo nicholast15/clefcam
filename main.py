@@ -157,7 +157,6 @@ def note_detection(image, ycoord, xcoord):
     thresh = ski.filters.threshold_otsu(enhanced)
     binary = enhanced > thresh
 
-    #morph = morphology.area_opening(binary,4,8)
     morph = ski.morphology.area_closing(binary,8,8)
 
     thresh = ski.filters.threshold_otsu(morph)
@@ -165,7 +164,6 @@ def note_detection(image, ycoord, xcoord):
     
     edges = ski.feature.canny(morph, sigma=2.0, low_threshold=0.1, high_threshold=0.5)
 
-    # Detect two radii
     hough_radii = np.arange(4, 10, 1, dtype=int)
     hough_res = ski.transform.hough_circle(edges, hough_radii)
 

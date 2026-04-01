@@ -20,6 +20,8 @@ from skimage.color import rgb2gray
 
 from skimage import morphology, measure
 
+import array
+
 def staff_lines(image):
 
     thresh = threshold_otsu(image)
@@ -39,27 +41,13 @@ def staff_lines(image):
 
     return ycoord_abs
 
-def vert_lines(image):
+def bar_tail_lines(image):
+    tested_angles = np.linspace(-0.01, 0.01, 2, endpoint=False)
+    h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
 
-    thresh = threshold_otsu(image)
-    binary = image > thresh
-
-    binary = ski.util.invert(binary)
-
-    #vertical lines
-    tested_angles_vert = np.linspace(-np.pi/4, np.pi/4, 180, endpoint=False)
-    h_vert, theta_vert, d_vert = hough_line(binary, theta=tested_angles_vert)
-    xcoord = []
-
-    for _vert, angle_vert, dist_vert in zip(*hough_line_peaks(h_vert, theta_vert, d_vert,min_distance=10)):
-        if abs(angle_vert) < 0.1:
-            xcoord.append(dist_vert)
-        
-
-
-    xcoord_abs = [int(abs(element)) for element in xcoord]
-    print(len(xcoord))
-    return xcoord_abs
+    accum, angles, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=10)
+    dist = dist.astype(np.int32)
+    return dist
 
 def blob():
     #image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img\TEST_MUSIC_single_line_nowriting_V2.png")))
@@ -93,26 +81,21 @@ def blob():
 
 #blob()
 
-def houghcircles(image, ycoord):
+def houghcircles(image, ycoord, xcoord):
 
     height, width = image.shape
-
     lines = np.ones((height, width), dtype=np.uint8) * 255
     for i in range(len(ycoord)):
         for j in range(width):
             lines[ycoord[i]][j] = 0
 
-    #for i in range(len(xcoord)):
-    #    for j in range(height):
-    #        lines[j][xcoord[i]] = 0
-    #        lines[j][xcoord[i]+1] = 0
-    #        lines[j][xcoord[i]-1] = 0
-
+    for i in range(len(xcoord)):
+        for j in range(height):
+            lines[j][xcoord[i]] = 0
 
     image_nolines = ski.util.invert(np.clip(ski.util.invert(image) - ski.util.invert(lines),0,255))
 
     denoised = restoration.denoise_nl_means(image_nolines, h=0.05, fast_mode=True)
-
     enhanced = exposure.equalize_adapthist(denoised)
 
     thresh = threshold_otsu(enhanced)
@@ -126,18 +109,12 @@ def houghcircles(image, ycoord):
     
     edges = canny(morph, sigma=2.0, low_threshold=0.1, high_threshold=0.5)
 
-    io.imshow(morph)
-    plt.show()
-    io.imshow(edges)
-    plt.show()
-    # Detect two radii
     hough_radii = np.arange(4, 10, 1, dtype=int)
     hough_res = hough_circle(edges, hough_radii)
 
-    # Select the most prominent 3 circles
     accums, cx, cy, radii = hough_circle_peaks(hough_res, hough_radii,min_xdistance=15, min_ydistance=10, threshold = 0.3)
 
-    # Draw them
+
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
     image = color.gray2rgb(image)
     for center_y, center_x, radius in zip(cy, cx, radii):
@@ -146,7 +123,6 @@ def houghcircles(image, ycoord):
 
     ax.imshow(image, cmap=plt.cm.gray)
     plt.show()
-    print(radii)
     return cx, cy, radii
 
 def note_type(image, x, y, radius, vert_xcoord):
@@ -174,9 +150,9 @@ image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img/happybirthday.png")
 
 
 ycoord = staff_lines(image)
-#xcoord = vert_lines(image)
+xcoord = bar_tail_lines(ski.util.invert(image))
 
 
-cx, cy, radii = houghcircles(image, ycoord)
+cx, cy, radii = houghcircles(image, ycoord, xcoord)
 
 
