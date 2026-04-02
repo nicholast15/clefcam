@@ -88,7 +88,7 @@ def template_match(image, template):
 '''
 single template matching for individual symbols on the staff
 input: stripe of input image containing one line of the staff
-output: string identifying best match to feature, coordinate of the top right corner
+output: string identifying best match to feature, coordinate of the top right corner and bottom left corner
 '''
 def templ_match(line, feature): #generalize this for more templating
     if feature == "clef":
@@ -122,14 +122,15 @@ def templ_match(line, feature): #generalize this for more templating
         assert template is not None, "Template file " + template_file + " not found"
         max_val, max_loc = template_match(line, template)
         print(f"Candidate {f},\tsz:{size}, conf: {max_val}, loc:{max_loc}")
-        topright = (max_loc[0]+ template.shape[1], max_loc[1]) #these indices are opposing
+        topright = (max_loc[0] + template.shape[1], max_loc[1]) #these indices are opposing
+        botleft  = (max_loc[0], max_loc[1] + template.shape[0])
         score.append(max_val)
-        locns.append(topright)
+        locns.append((topright, botleft))
 
     match_i = np.argmax(np.array(score))    #find the clef with the highest match value
     match = feats[match_i]
-    coord = locns[match_i]
-    return match, coord
+    coords = locns[match_i]
+    return match, coords
 
 '''
 input: image of notes in one bar line, y-coordinate of staff lines, x-coordinate of bar lines
@@ -431,19 +432,24 @@ def main(filepath):
     print(clefid, clefloc) #coord uses cartesian, while the iamge follows image convention
     tsid, tsloc = templ_match(ski.util.invert(slices[0]), "ts")
     print(tsid, tsloc)
-    key_im = slices[0][:, clefloc[0]:tsloc[0]]
+    key_im = slices[0][:, clefloc[0][0]:tsloc[1][0]]
     imshow(key_im)
     print(key_extract(key_im))
     #key signature will be between staff and TS
 
+    init = True #to change behaviour for the first line
     for s in slices:
-        #find the clef to crop - TODO: sharps and flats as well
-        #clef will be to the left of ts in first line
-        #imshow(s[:, :tsloc[0]])
-        clef, coord = templ_match(ski.util.invert(s), "clef")
-        s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
+        #crop out the time signature and clef, leaving only notes (and repeats which we will ignore)
+        if init:
+            s = s[:, tsloc[0][0]:]  #start from the right of the time signature
+            init = False
+        else:
+            s = s[:, tsloc[1][0]:]  #start from left of the time signature (right of the key sig)
         #print(bar_tail_lines(s))
         #imshow(s)
+        #continue
+
+        #note detection
         lines, rotation = staff_lines(s)
         vert_lines = bar_tail_lines(s)
         cx, cy, radii = note_detection(ski.util.invert(s),lines,vert_lines)
