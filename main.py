@@ -193,7 +193,6 @@ output: position by number relative to top of staff lines
 def note_pos(y, staff_ycoord):
     gap = abs(staff_ycoord[0]-staff_ycoord[1])
     dist = y - staff_ycoord[0]
-    print(staff_ycoord[0])
     pos = np.round(dist/gap*2) 
     return int(pos)
 
@@ -202,23 +201,24 @@ input: image of notes in one bar line, x and y coordinate of a note, x-coordinat
 output: note timing type
 '''
 def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind):
-    tot = 0
-    count = 0
     radius = radii[ind]
     x = cx[ind]
     y = cy[ind]
+    tot = 0
+
 
     gap = abs(staff_ycoord[0]-staff_ycoord[1])
 
     thresh = ski.filters.threshold_otsu(image)
     image = image > thresh
 
-    for i in range(int(np.floor(radius/2)*2+1)):
-        for j in range(int(np.floor(radius/2)*2+1)):
-            tot += image[int(y + i - np.floor(radius/2)),int(x + j - np.floor(radius/2))]
-            count += 1
-
-    if tot/count > 0.2:
+    for i in range(3):
+        if x - 1 >= 0:
+            for j in range(3):
+                if image[y-1+i, x-1+j] == True:
+                    tot += 1
+    
+    if tot/9 < 0.5:
         return 4
     else:
         for i in range(len(vert_xcoord)):
@@ -310,6 +310,7 @@ def main(filepath):
     borders = staff_borders(lines, im.shape)
     slices = staff_slice(im, borders)
 
+<<<<<<< Updated upstream
     #imshow(slices[0])
     clefid, clefloc = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
     print(clefid, clefloc) #coord uses cartesian, while the iamge follows image convention
@@ -317,6 +318,14 @@ def main(filepath):
     print(tsid, tsloc)
     key_im = slices[0]#[:, clefloc[0]:tsloc[0]]
     print(key_extract(key_im))
+=======
+    clef1, coord1 = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
+    print(clef1, coord1) #coord uses cartesian, while the iamge follows image convention
+    ts, coord2 = templ_match(ski.util.invert(slices[0]), "ts")
+    print(ts, coord2)
+    s1 = slices[0][:, coord2[0]:]
+    #imshow(s1)
+>>>>>>> Stashed changes
     #key signature will be between staff and TS
 
     for s in slices[1:]:
@@ -331,17 +340,23 @@ def main(filepath):
         vert_lines = bar_tail_lines(s)
         cx, cy, radii = note_detection(ski.util.invert(s),lines,vert_lines)
 
+        idx = np.lexsort([cy,radii,cx])
+        cx = cx[idx]
+        cy = cy[idx]
+        radii = radii[idx]
+
         pos = []
         timing = []
         for i in range(len(cx)):
             pos.append(note_pos(cy[i],lines))
             timing.append(note_type(ski.util.invert(s), cx, cy, radii, lines, vert_lines, i))
 
-        print(pos)
+        #print(pos)
         print(timing)
         break
 
 
+<<<<<<< Updated upstream
 #main('Img/blow.png')
 def test():
     cases = ["blow.png", 
@@ -354,4 +369,7 @@ def test():
         main("Img/" + c)
 
 
+=======
+main('Img/blow.png')
+>>>>>>> Stashed changes
 
