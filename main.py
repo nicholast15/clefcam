@@ -214,7 +214,7 @@ def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind, stack):
             for j in range(3):
                 if image[y-1+i, x-1+j] == True:
                     tot += 1
-            
+
 
     if tot/9 < 0.5 or stack == True:
         temp_timing, dif = dark_note_differentiate(image, cx, cy, radii, ind, staff_ycoord, stack)
@@ -222,10 +222,10 @@ def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind, stack):
         return temp_timing, note_pos(cy[ind+dif], staff_ycoord), cx[ind+dif]
     else:
         for i in range(len(vert_xcoord)):
-            if vert_xcoord[i] > np.floor(x - radius*1.5) and vert_xcoord[i] < np.floor(x + radius*1.5):
+            if vert_xcoord[i] > x - radius*2 and vert_xcoord[i] < x + radius*2:
                 return 2, note_pos(y,staff_ycoord), x
-            else:
-                return 1, note_pos(y,staff_ycoord), x
+            
+        return 1, note_pos(y,staff_ycoord), x
 
 
 def dark_note_differentiate(image, cx, cy, radii, ind, ycoord, stack):
@@ -289,8 +289,8 @@ def detect_stem_end(image, x, y, radius, ycoord, stem_dir):
     thresh = ski.filters.threshold_otsu(image)
     image = image > thresh
 
-    tot1 = 0
-    tot2 = 0
+    #tot1 = 0
+    #tot2 = 0
 
     dist = x - stem_dir*radius
 
