@@ -310,7 +310,6 @@ def main(filepath):
     borders = staff_borders(lines, im.shape)
     slices = staff_slice(im, borders)
 
-<<<<<<< Updated upstream
     #imshow(slices[0])
     clefid, clefloc = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
     print(clefid, clefloc) #coord uses cartesian, while the iamge follows image convention
@@ -318,14 +317,6 @@ def main(filepath):
     print(tsid, tsloc)
     key_im = slices[0]#[:, clefloc[0]:tsloc[0]]
     print(key_extract(key_im))
-=======
-    clef1, coord1 = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
-    print(clef1, coord1) #coord uses cartesian, while the iamge follows image convention
-    ts, coord2 = templ_match(ski.util.invert(slices[0]), "ts")
-    print(ts, coord2)
-    s1 = slices[0][:, coord2[0]:]
-    #imshow(s1)
->>>>>>> Stashed changes
     #key signature will be between staff and TS
 
     for s in slices[1:]:
@@ -356,8 +347,6 @@ def main(filepath):
         break
 
 
-<<<<<<< Updated upstream
-#main('Img/blow.png')
 def test():
     cases = ["blow.png", 
              "sax.jpg", 
@@ -369,7 +358,4 @@ def test():
         main("Img/" + c)
 
 
-=======
-main('Img/blow.png')
->>>>>>> Stashed changes
 
