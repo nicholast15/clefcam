@@ -149,10 +149,15 @@ def note_type(image, x, y, radius, vert_xcoord):
 image = ski.color.rgb2gray(ski.color.rgba2rgb(io.imread("Img/happybirthday.png")))
 
 
-ycoord = staff_lines(image)
-xcoord = bar_tail_lines(ski.util.invert(image))
+#ycoord = staff_lines(image)
+#xcoord = bar_tail_lines(ski.util.invert(image))
 
 
-cx, cy, radii = houghcircles(image, ycoord, xcoord)
+#cx, cy, radii = houghcircles(image, ycoord, xcoord)
 
 
+
+for i in range(5):
+    if i == 2:
+        i+=1
+    print(i)
