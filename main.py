@@ -200,14 +200,11 @@ def note_pos(y, staff_ycoord):
 input: image of notes in one bar line, x and y coordinate of a note, x-coordinate of bar lines
 output: note timing type
 '''
-def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind):
+def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind, stack):
     radius = radii[ind]
     x = cx[ind]
     y = cy[ind]
     tot = 0
-
-
-    gap = abs(staff_ycoord[0]-staff_ycoord[1])
 
     thresh = ski.filters.threshold_otsu(image)
     image = image > thresh
@@ -217,15 +214,71 @@ def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind):
             for j in range(3):
                 if image[y-1+i, x-1+j] == True:
                     tot += 1
-    
-    if tot/9 < 0.5:
-        return 4
+            
+
+    if tot/9 < 0.5 or stack == True:
+        temp_timing, dif = dark_note_differentiate(image, cx, cy, radii, ind, staff_ycoord, stack)
+
+        return temp_timing, note_pos(cy[ind+dif], staff_ycoord), cx[ind+dif]
     else:
         for i in range(len(vert_xcoord)):
             if vert_xcoord[i] > np.floor(x - radius*1.5) or vert_xcoord[i] < np.floor(x + radius*1.5):
-                return 2
+                return 2, note_pos(y,staff_ycoord), x
             else:
-                return 1
+                return 1, note_pos(y,staff_ycoord), x
+
+
+def dark_note_differentiate(image, cx, cy, radii, ind, ycoord, stack):
+    x = cx[ind]
+    y = cy[ind]
+    radius = radii[ind]
+
+    height, width = image.shape
+
+    lines = np.ones((height, width), dtype=np.uint8) * 255
+    for i in range(len(ycoord)):
+        for j in range(width):
+            lines[ycoord[i]][j] = 0
+
+    thresh = ski.filters.threshold_otsu(image)
+    image = image > thresh
+
+    image_nolines = ski.util.invert(np.clip(ski.util.invert(image) - ski.util.invert(lines),0,255))
+
+    low = max(0, x - radius*2)
+    high = min(x + radius*5, width)
+    note = image_nolines[:,low:high]
+
+    thresh = ski.filters.threshold_otsu(note)
+    note = note > thresh
+
+    note = ski.morphology.area_opening(note,10,4)
+    note = ski.morphology.area_closing(note,4,4)
+
+    if stack == True:
+        edges = ski.feature.canny(note, sigma=2.0, low_threshold=0.1, high_threshold=0.5)
+        
+        hough_radii = np.arange(3, 10, 1, dtype=int)
+        hough_res = ski.transform.hough_circle(edges, hough_radii)
+
+        accums, tcx, tcy, tradii = ski.transform.hough_circle_peaks(hough_res, hough_radii, threshold = 0.3, total_num_peaks = 1)
+
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
+        note = ski.color.gray2rgb(note.astype('uint8') * 255)
+        circy, circx = ski.draw.circle_perimeter(tcy[0], tcx[0], tradii[0], shape=note.shape)
+        note[circy, circx] = (255, 0, 0)
+        ax.imshow(note, cmap=plt.cm.gray)
+        plt.show()
+
+        if abs(y-tcy[0]) < abs(cy[ind+1] - tcy[0]):
+            return 8,0
+        else:
+            return 8,1
+    else:
+
+        return 4,0
+
+
 
 
 
@@ -338,14 +391,46 @@ def main(filepath):
 
         pos = []
         timing = []
+        abs_pos_x = []
+        
         for i in range(len(cx)):
-            pos.append(note_pos(cy[i],lines))
-            timing.append(note_type(ski.util.invert(s), cx, cy, radii, lines, vert_lines, i))
+            skip = False
+            nogo = False
 
-        #print(pos)
+            if i != 0 and skip == False:
+                if cx[i] - radii[i-1]*3 < cx[i-1] or cx[i] == cx[i-1]:
+                    print(cx[i])
+                    skip = True
+                    nogo = True
+
+            if i != len(cx)-1:
+                if cx[i] + radii[i]*4 > cx[i+1] and abs(cy[i]-cy[i+1]) > radii[i]*2:
+                    temp_time, sheet_pos, temp_abs_pos_x  = note_type(ski.util.invert(s), cx, cy, radii, lines, vert_lines, i, True)
+                    skip = True
+            
+            
+            if skip == False:
+                temp_time, sheet_pos, temp_abs_pos_x = note_type(ski.util.invert(s), cx, cy, radii, lines, vert_lines, i, False)
+
+            if len(abs_pos_x) != 0:
+                for j in range(len(abs_pos_x)):
+                    if abs_pos_x[j] < temp_abs_pos_x + 3 and abs_pos_x[j] > temp_abs_pos_x - 3:
+                        nogo = True
+                        break
+
+            if nogo == False:
+                timing.append(temp_time)
+                pos.append(sheet_pos)
+                abs_pos_x.append(temp_abs_pos_x)
+
+        print(pos)
         print(timing)
+        #print(cx)
+        #print(abs_pos_x)
         break
 
+
+main("Img/teehans.png")
 
 def test():
     cases = ["blow.png", 
