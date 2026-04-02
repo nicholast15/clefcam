@@ -342,9 +342,7 @@ def main(filepath):
         break
 
 
-<<<<<<< Updated upstream
 #main('Img/blow.png')
-=======
 def test():
     cases = ["blow.png", 
              "sax.jpg", 
@@ -356,5 +354,4 @@ def test():
         main("Img/" + c)
 
 
->>>>>>> Stashed changes
 
