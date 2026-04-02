@@ -289,8 +289,8 @@ def detect_stem_end(image, x, y, radius, ycoord, stem_dir):
     thresh = ski.filters.threshold_otsu(image)
     image = image > thresh
 
-    #tot1 = 0
-    #tot2 = 0
+    tot1 = 0
+    tot2 = 0
 
     dist = x - stem_dir*radius
 
@@ -309,9 +309,6 @@ def detect_stem_end(image, x, y, radius, ycoord, stem_dir):
         return 8
     else:
         return 4
-
-
-
 
 
 
