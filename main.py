@@ -160,17 +160,20 @@ def note_detection(image, ycoord, xcoord):
     thresh = ski.filters.threshold_otsu(enhanced)
     binary = enhanced > thresh
 
-    morph = ski.morphology.area_closing(binary,8,8)
+    morph = ski.morphology.area_closing(binary,4,8)
 
     thresh = ski.filters.threshold_otsu(morph)
     morph = morph > thresh
     
     edges = ski.feature.canny(morph, sigma=2.0, low_threshold=0.1, high_threshold=0.5)
 
-    hough_radii = np.arange(4, 10, 1, dtype=int)
+    #ski.io.imshow(morph)
+    #plt.show()
+
+    hough_radii = np.arange(3, 10, 1, dtype=int)
     hough_res = ski.transform.hough_circle(edges, hough_radii)
 
-    accums, cx, cy, radii = ski.transform.hough_circle_peaks(hough_res, hough_radii,min_xdistance=15, min_ydistance=10, threshold = 0.3)
+    accums, cx, cy, radii = ski.transform.hough_circle_peaks(hough_res, hough_radii,min_xdistance=10, min_ydistance=10, threshold = 0.3)
 
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
     image = ski.color.gray2rgb(image)
@@ -185,36 +188,42 @@ def note_detection(image, ycoord, xcoord):
 
 '''
 input: y coordinates of a note, y-coordinate of staff lines
-output: ABC notation of the music
+output: position by number relative to top of staff lines
 '''
 
 def note_pos(y, staff_ycoord):
     gap = abs(staff_ycoord[0]-staff_ycoord[1])
     dist = y - staff_ycoord[0]
+    print(staff_ycoord[0])
     pos = np.round(dist/gap*2) 
-    return pos
+    return int(pos)
 
 '''
 input: image of notes in one bar line, x and y coordinate of a note, x-coordinate of bar lines
-output: note type
+output: note timing type
 '''
-def note_type(image, cx, cy, radii, vert_xcoord, ind):
+def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind):
     tot = 0
     count = 0
     radius = radii[ind]
     x = cx[ind]
     y = cy[ind]
 
-    for i in range(np.floor(radius/2)*2+1):
-        for j in range(np.floor(radius/2)*2+1):
-            tot += image[y + i - np.floor(radius/2),x + j - np.floor(radius/2)]
+    gap = abs(staff_ycoord[0]-staff_ycoord[1])
+
+    thresh = ski.filters.threshold_otsu(image)
+    image = image > thresh
+
+    for i in range(int(np.floor(radius/2)*2+1)):
+        for j in range(int(np.floor(radius/2)*2+1)):
+            tot += image[int(y + i - np.floor(radius/2)),int(x + j - np.floor(radius/2))]
             count += 1
 
-    if tot/count > 0.5:
-        return 0
+    if tot/count > 0.2:
+        return 4
     else:
         for i in range(len(vert_xcoord)):
-            if vert_xcoord[i] > np.floor(x - radius*2) or vert_xcoord[i] < np.floor(x + radius*2):
+            if vert_xcoord[i] > np.floor(x - radius*1.5) or vert_xcoord[i] < np.floor(x + radius*1.5):
                 return 2
             else:
                 return 1
@@ -266,16 +275,26 @@ def main(filepath):
     imshow(s1)
     #key signature will be between staff and TS
 
-    lines, rotation = staff_lines(slices[-1])
-    vert_lines = bar_tail_lines(slices[-1])
-    note_detection(ski.util.invert(slices[-1]),lines,vert_lines)
-
     for s in slices[1:]:
         #find the clef to crop - TODO: sharps and flats as well
         clef, coord = templ_match(ski.util.invert(s), "clef")
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
-        print(bar_tail_lines(s))
-        imshow(s)
+        #print(bar_tail_lines(s))
+        #imshow(s)
+        lines, rotation = staff_lines(s)
+        vert_lines = bar_tail_lines(s)
+        cx, cy, radii = note_detection(ski.util.invert(s),lines,vert_lines)
+
+        pos = []
+        timing = []
+        for i in range(len(cx)):
+            pos.append(note_pos(cy[i],lines))
+            timing.append(note_type(ski.util.invert(s), cx, cy, radii, lines, vert_lines, i))
+
+        print(pos)
+        print(timing)
+        break
 
 
+#main('Img/blow.png')
 
