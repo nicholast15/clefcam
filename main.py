@@ -180,8 +180,8 @@ def note_detection(image, ycoord, xcoord):
         circy, circx = ski.draw.circle_perimeter(center_y, center_x, radius, shape=image.shape)
         image[circy, circx] = (255, 0, 0)
 
-    ax.imshow(image, cmap=plt.cm.gray)
-    plt.show()
+    #ax.imshow(image, cmap=plt.cm.gray)
+    #plt.show()
 
     return cx, cy, radii
 
@@ -263,7 +263,6 @@ input: limited span of a line containing key signature
 outputs: number of sharps and flats detected
 '''
 def key_extract(im):
-    imshow(im)
     thres = 0.75
     template_root = "Img/templates/"
     sizes = [16, 32, 64, 128]       #template sizes to allow for diff res images
@@ -282,6 +281,38 @@ def key_extract(im):
         flats = multimatch(im, flat_t, thres)
     
     return len(sharps), len(flats)
+
+"""
+Build ABC notation header
+"""
+def build_abc_header(title, time_sig, n_sharps, n_flats):
+
+    if n_sharps > 0:
+        key_str = ['C', 'G', 'D', 'A', 'E', 'B', 'F#'][min(n_sharps - 1, 6)] + ' major'
+    elif n_flats > 0:
+        key_str = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'][min(n_flats - 1, 6)] + ' major'
+    else:
+        key_str = 'C major'
+    
+    header = f"""X:1\nT:{title}\nM:{time_sig}\nL:1/8\nK:{key_str}"""
+    return header
+
+"""
+Export detected music information to ABC notation file
+"""
+def export_to_abc(filename, clef, header):
+    
+    body = ""
+    for bar_idx, notes_in_bar in enumerate(bars_notes):
+        
+        body += "| "
+    
+    abc_content = header + body + "\n"
+    
+    with open(filename, 'w') as f:
+        f.write(abc_content)
+    
+    print(f"Exported to {filename}")
 
 def main(filepath):
     im = ski.io.imread(filepath)
@@ -315,7 +346,8 @@ def main(filepath):
     print(clefid, clefloc) #coord uses cartesian, while the iamge follows image convention
     tsid, tsloc = templ_match(ski.util.invert(slices[0]), "ts")
     print(tsid, tsloc)
-    key_im = slices[0]#[:, clefloc[0]:tsloc[0]]
+    key_im = slices[0][:, clefloc[0]:tsloc[0]]
+    imshow(key_im)
     print(key_extract(key_im))
     #key signature will be between staff and TS
 
