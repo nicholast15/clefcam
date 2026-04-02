@@ -61,7 +61,6 @@ def staff_borders(lines, dims, padding = 2):
         bot = lines[i] + distpad
         borders.append(int(top))
         borders.append(int(bot))
-    print(borders)
     return borders
 
 '''
@@ -122,7 +121,7 @@ def templ_match(line, feature): #generalize this for more templating
         template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
         assert template is not None, "Template file " + template_file + " not found"
         max_val, max_loc = template_match(line, template)
-        print(f, max_val, max_loc)
+        print(f"Candidate {f},\tsz:{size}, conf: {max_val}, loc:{max_loc}")
         topright = (max_loc[0]+ template.shape[1], max_loc[1]) #these indices are opposing
         score.append(max_val)
         locns.append(topright)
@@ -240,6 +239,50 @@ def imshow(image, isGray=True):
         plt.imshow(image)
     plt.show()
 
+def multimatch(im, templ, thres=0.75, min_dist=5):
+    #find multiple matches to a template and filter close results
+    res = cv.matchTemplate(im, templ, cv.TM_CCOEFF_NORMED)
+    matches = np.where(res >= thres)
+    coords = list(zip(matches[1], matches[0])) #swap coords to x,y
+    return coords
+    print(coords)
+
+    if not coords:
+        return [] #failed to find anything
+
+    #remove overlaps
+    coords = sorted(coords)
+    filt = [coords[0]]
+    for coord in coords[1:]:
+        if abs(coord[0] - filt[-1][0]) > min_dist:
+            filt.append(coord)
+    return filt
+
+'''
+input: limited span of a line containing key signature
+outputs: number of sharps and flats detected
+'''
+def key_extract(im):
+    imshow(im)
+    thres = 0.75
+    template_root = "Img/templates/"
+    sizes = [16, 32, 64, 128]       #template sizes to allow for diff res images
+    sharps, flats = [], []
+
+    for size in sizes:
+        sharp_t = cv.imread(template_root + "sharp_" + str(size) + ".png", cv.IMREAD_GRAYSCALE)
+        flat_t = cv.imread(template_root + "flat_" + str(size) + ".png", cv.IMREAD_GRAYSCALE)
+
+        if sharp_t.shape[0] > im.shape[0] or sharp_t.shape[1] > im.shape[1]:
+            break
+        if flat_t.shape[0] > im.shape[0] or flat_t.shape[1] > im.shape[1]:
+            break
+
+        sharps = multimatch(im, sharp_t, thres)
+        flats = multimatch(im, flat_t, thres)
+    
+    return len(sharps), len(flats)
+
 def main(filepath):
     im = ski.io.imread(filepath)
 
@@ -267,16 +310,19 @@ def main(filepath):
     borders = staff_borders(lines, im.shape)
     slices = staff_slice(im, borders)
 
-    clef1, coord1 = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
-    print(clef1, coord1) #coord uses cartesian, while the iamge follows image convention
-    ts, coord2 = templ_match(ski.util.invert(slices[0]), "ts")
-    print(ts, coord2)
-    s1 = slices[0][:, coord2[0]:]
-    imshow(s1)
+    #imshow(slices[0])
+    clefid, clefloc = templ_match(ski.util.invert(slices[0]), "clef") #just check for clef on the first line
+    print(clefid, clefloc) #coord uses cartesian, while the iamge follows image convention
+    tsid, tsloc = templ_match(ski.util.invert(slices[0]), "ts")
+    print(tsid, tsloc)
+    key_im = slices[0]#[:, clefloc[0]:tsloc[0]]
+    print(key_extract(key_im))
     #key signature will be between staff and TS
 
     for s in slices[1:]:
         #find the clef to crop - TODO: sharps and flats as well
+        #clef will be to the left of ts in first line
+        #imshow(s[:, :tsloc[0]])
         clef, coord = templ_match(ski.util.invert(s), "clef")
         s = s[:,coord[0]:]   #start from x location of top right match point- cut out clef
         #print(bar_tail_lines(s))
@@ -296,5 +342,19 @@ def main(filepath):
         break
 
 
+<<<<<<< Updated upstream
 #main('Img/blow.png')
+=======
+def test():
+    cases = ["blow.png", 
+             "sax.jpg", 
+             "cradle.png", 
+             "teehans.png",
+             "bass.png"
+    ] #fur elise is in 3/8, not supported. also too complicated
+    for c in cases:
+        main("Img/" + c)
+
+
+>>>>>>> Stashed changes
 

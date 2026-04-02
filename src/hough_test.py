@@ -16,11 +16,11 @@ from matplotlib import cm
 #image[idx, idx] = 255
 #image[draw_line(45, 25, 25, 175)] = 255
 #image[draw_line(25, 135, 175, 155)] = 255
-image = ski.io.imread("Img/blow_single.png")
+image = ski.io.imread("Img/blow_single_textless.png")
 image = ski.color.rgba2rgb(image)
 image = ski.color.rgb2gray(image)
 image = ski.util.img_as_ubyte(image)
-image = ski.util.invert(image)
+image = ski.util.invert(image[:, 65:])
 
 # Classic straight-line Hough transform
 # Set a precision of 0.5 degree.
@@ -59,7 +59,7 @@ ax[2].set_ylim((image.shape[0], 0))
 ax[2].set_axis_off()
 ax[2].set_title('Detected lines')
 
-for _, angle, dist in zip(*hough_line_peaks(h, theta, d, min_distance=10)):
+for _, angle, dist in zip(*hough_line_peaks(h, theta, d, min_distance=3, threshold=0.99*np.max(h))):
     if dist != 0: #Check if lines are to the right of the time signature
         print(angle, dist)
         (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
