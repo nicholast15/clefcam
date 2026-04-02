@@ -222,7 +222,7 @@ def note_type(image, cx, cy, radii, staff_ycoord, vert_xcoord, ind, stack):
         return temp_timing, note_pos(cy[ind+dif], staff_ycoord), cx[ind+dif]
     else:
         for i in range(len(vert_xcoord)):
-            if vert_xcoord[i] > np.floor(x - radius*1.5) or vert_xcoord[i] < np.floor(x + radius*1.5):
+            if vert_xcoord[i] > np.floor(x - radius*1.5) and vert_xcoord[i] < np.floor(x + radius*1.5):
                 return 2, note_pos(y,staff_ycoord), x
             else:
                 return 1, note_pos(y,staff_ycoord), x
@@ -263,20 +263,52 @@ def dark_note_differentiate(image, cx, cy, radii, ind, ycoord, stack):
 
         accums, tcx, tcy, tradii = ski.transform.hough_circle_peaks(hough_res, hough_radii, threshold = 0.3, total_num_peaks = 1)
 
-        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
+        #fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
         note = ski.color.gray2rgb(note.astype('uint8') * 255)
         circy, circx = ski.draw.circle_perimeter(tcy[0], tcx[0], tradii[0], shape=note.shape)
         note[circy, circx] = (255, 0, 0)
-        ax.imshow(note, cmap=plt.cm.gray)
-        plt.show()
+        #ax.imshow(note, cmap=plt.cm.gray)
+        #plt.show()
 
         if abs(y-tcy[0]) < abs(cy[ind+1] - tcy[0]):
             return 8,0
         else:
             return 8,1
     else:
+        stem_dir = -1
+        if note_pos(y, ycoord) < 5:
+            stem_dir = 1
+        
+        return detect_stem_end(note, x, y, radius, ycoord, stem_dir),0
 
-        return 4,0
+def detect_stem_end(image, x, y, radius, ycoord, stem_dir):
+    gap = abs(ycoord[0] - ycoord[1])
+
+    point = int(np.round(y + stem_dir * gap * 3.5))
+
+    thresh = ski.filters.threshold_otsu(image)
+    image = image > thresh
+
+    tot1 = 0
+    tot2 = 0
+
+    dist = x - stem_dir*radius
+
+    height, width = image.shape
+
+    for i in range(3):
+        for j in range(3):
+            if width > dist + 1 + i:
+                if image[point - stem_dir * (1 + j), dist + 1 + i] == False:
+                    tot1+=1
+            if 0 > dist - 1 - i:
+                if image[point - stem_dir * (1 + j), dist - 1 - i] == False:
+                    tot2+=1
+    
+    if tot1/9 > 0.5 or tot2/9 > 0.5:
+        return 8
+    else:
+        return 4
 
 
 
@@ -404,7 +436,7 @@ def main(filepath):
     print(key_extract(key_im))
     #key signature will be between staff and TS
 
-    for s in slices[1:]:
+    for s in slices:
         #find the clef to crop - TODO: sharps and flats as well
         #clef will be to the left of ts in first line
         #imshow(s[:, :tsloc[0]])
@@ -431,7 +463,6 @@ def main(filepath):
 
             if i != 0 and skip == False:
                 if cx[i] - radii[i-1]*3 < cx[i-1] or cx[i] == cx[i-1]:
-                    print(cx[i])
                     skip = True
                     nogo = True
 
@@ -459,10 +490,10 @@ def main(filepath):
         print(timing)
         #print(cx)
         #print(abs_pos_x)
-        break
+        #break
 
 
-main("Img/teehans.png")
+main("Img/blow.png")
 
 def test():
     cases = ["blow.png", 
