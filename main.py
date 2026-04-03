@@ -542,6 +542,10 @@ def main(filepath):
     print(n_keysig)
     
     init = True #to change behaviour for the first line
+
+    note_position = []
+    note_timing = []
+
     for s in slices:
         #crop out the time signature and clef, leaving only notes (and repeats which we will ignore)
         if init:
@@ -596,11 +600,13 @@ def main(filepath):
                 pos.append(sheet_pos)
                 abs_pos_x.append(temp_abs_pos_x)
 
-        print(pos)
-        print(timing)
+        #print(pos)
+        #print(timing)
         #print(cx)
         #print(abs_pos_x)
         #break
+        note_position.extend(pos)
+        note_timing.extend(timing)
 
 
 im = main("Img/blow.png")
