@@ -178,7 +178,7 @@ def templ_match(line, feature): #generalize this for more templating
         template = cv.imread(template_file, cv.IMREAD_GRAYSCALE)
         assert template is not None, "Template file " + template_file + " not found"
         max_val, max_loc = template_match(line, template)
-        print(f"Candidate {f},\tsz:{size}, conf: {max_val}, loc:{max_loc}")
+        #print(f"Candidate {f},\tsz:{size}, conf: {max_val}, loc:{max_loc}")
         topright = (max_loc[0] + template.shape[1], max_loc[1]) #these indices are opposing
         botleft  = (max_loc[0], max_loc[1] + template.shape[0])
         score.append(max_val)
@@ -452,53 +452,84 @@ def keysig_count(im, ycoord):
             lines[ycoord[i]][j] = 0
     #remove those lines on the image
     nolines = ski.util.invert(np.clip(ski.util.invert(im) - ski.util.invert(lines),0,255))
-    imshow(nolines)
+    #imshow(nolines)
 
     #remove elements connected to the edge- remainders of the clef
     cleanbord = ski.segmentation.clear_border(nolines)
-    imshow(cleanbord)
+    #imshow(cleanbord)
 
     #connect remainders and count
     ksz = width//10 if width//10 > 2 else 2
     kern = ski.morphology.disk(width//10)
     closed = ski.morphology.dilation(cleanbord, kern)
-    imshow(closed)
+    #imshow(closed)
     labeled = ski.measure.label(closed)
     count = len(ski.measure.regionprops(labeled))
     return count
 
 
-"""
-Build ABC notation header
-"""
-def build_abc_header(title, time_sig, n_sharps, n_flats):
+def pos_to_note(pos, clef="GClef"):
+    """Convert staff position to ABC note letter for given clef"""
+    # GClef (treble): top line is F, bottom line is E (positions 0-8)
+    # FClef (bass): top line is G, bottom line is A (positions 0-8)
+    gclef_notes = ['F', 'E', 'D', 'C', 'B', 'A', 'G', 'F', 'E']
+    fclef_notes = ['G', 'F', 'E', 'D', 'C', 'B', 'A', 'G', 'F']
+    
+    notes_map = gclef_notes if clef == "GClef" else fclef_notes
+    if 0 <= pos < len(notes_map):
+        return notes_map[int(pos)]
+    return 'C'
 
-    if n_sharps > 0:
-        key_str = ['C', 'G', 'D', 'A', 'E', 'B', 'F#'][min(n_sharps - 1, 6)] + ' major'
-    elif n_flats > 0:
-        key_str = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'][min(n_flats - 1, 6)] + ' major'
+def timing_to_abc_duration(timing_type):
+    """Convert timing type to ABC duration notation"""
+    # 1=sixteenth, 2=eighth, 4=quarter, 8=half, etc.
+    # ABC default unit is 1/8, so: 8=whole, 4=half, 2=quarter, 1=eighth
+    duration_map = {
+        1: '',       # sixteenth (half of eighth)
+        2: '',       # eighth (default)
+        4: '2',      # quarter
+        8: '4',      # half
+    }
+    return duration_map.get(timing_type, '')
+
+def build_abc_header(title, time_sig, keysig, n_keysig, clef="GClef"):
+    """Build ABC notation header"""
+    # Build key signature string
+    if keysig == "sharp" and n_keysig >= 1:
+        key_str = ['C', 'G', 'D', 'A', 'E', 'B', 'F#'][min(n_keysig, 6)]
+    elif keysig == "flat" and n_keysig >= 1:
+        key_str = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'][min(n_keysig, 6)]
     else:
         key_str = 'C major'
     
-    header = f"""X:1\nT:{title}\nM:{time_sig}\nL:1/8\nK:{key_str}"""
+    # Add clef to K: field (treble for GClef, bass for FClef)
+    clef_str = 'treble' if clef == "GClef" else 'bass'
+    
+    header = f"""X:1
+T:{title}
+M:{time_sig}
+L:1/8
+Q:1/4=120
+K:{key_str} {clef_str}
+"""
     return header
 
-"""
-Export detected music information to ABC notation file
-"""
-def export_to_abc(filename, clef, header):
+def export_to_abc(filename, clef, time_sig, keysig, n_keysig, note_position, note_timing, title='Sheet Music'):
+    """Export detected music information to ABC notation file"""
+    header = build_abc_header(title, time_sig, keysig, n_keysig, clef)
     
     body = ""
-    for bar_idx, notes_in_bar in enumerate(bars_notes):
-        
-        body += "| "
+    for pos, timing in zip(note_position, note_timing):
+        note = pos_to_note(pos, clef)
+        duration = timing_to_abc_duration(timing)
+        body += note + duration + " "
     
     abc_content = header + body + "\n"
     
     with open(filename, 'w') as f:
         f.write(abc_content)
     
-    print(f"Exported to {filename}")
+    print(f"Exported {len(note_position)} notes to {filename}")
 
 def main(filepath):
     im = ski.io.imread(filepath)
@@ -607,9 +638,16 @@ def main(filepath):
         #break
         note_position.extend(pos)
         note_timing.extend(timing)
+    
+    # Export to ABC file
+    if note_position and clefid and tsid:
+        # Convert time signature from "4-4" format to "4/4" format
+        time_sig_abc = tsid.replace('-', '/')
+        export_to_abc('output.abc', clefid, time_sig_abc, keysig, n_keysig, 
+                      note_position, note_timing, title=filepath.replace('Img/', '').replace('.png', '').replace('.jpg', ''))
 
 
-im = main("Img/blow.png")
+main("Img/blow.png")
 
 def test():
     cases = ["blow.png", 
