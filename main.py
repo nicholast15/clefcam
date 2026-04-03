@@ -42,6 +42,63 @@ def bar_tail_lines(image):
     dist = dist.astype(np.int32)
     return dist
 
+
+def eighth_note_lower(image):
+    tested_angles = np.linspace(np.pi/4 + np.pi/16, np.pi/4 - np.pi/16, 10, endpoint=False)
+    im = image
+    image = ski.feature.canny(image, sigma=2.0, low_threshold=0.1, high_threshold=0.3)
+
+    h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
+
+    accum, angle, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=10, threshold = 11, num_peaks = 1)
+    
+
+    image = ski.color.gray2rgb(image.astype('uint8') * 255)
+
+    y0 = (dist - 0 * np.cos(angle)) / np.sin(angle)
+    y1 = (dist - image.shape[1] * np.cos(angle)) / np.sin(angle)
+    
+    if len(y0 != 0):
+        rr, cc = ski.draw.line(int(y0[0]),0,int(y1[0]),image.shape[1]-1)
+        for i in range(len(rr)):
+            if rr[i] == image.shape[0] or cc[i] == image.shape[1]:
+                break
+            image[rr[i], cc[i]] = (255, 0, 0)
+        imshow(im)
+        #imshow(image)
+    
+    dist = dist.astype(np.int32)
+    return len(dist) 
+
+def eighth_note_upper(image):
+    tested_angles = np.linspace(3*np.pi/4 + np.pi/16, 3*np.pi/4 - np.pi/16, 10, endpoint=False)
+    im = image
+    image = ski.feature.canny(image, sigma=2.0, low_threshold=0.1, high_threshold=0.3)
+
+    h, theta, d = ski.transform.hough_line(image, theta=tested_angles)
+
+    accum, angle, dist = ski.transform.hough_line_peaks(h, theta, d, min_distance=10, threshold = 11, num_peaks = 1)
+    
+
+    image = ski.color.gray2rgb(image.astype('uint8') * 255)
+
+    y0 = (dist - 0 * np.cos(angle)) / np.sin(angle)
+    y1 = (dist - image.shape[1] * np.cos(angle)) / np.sin(angle)
+    
+    if len(y0 != 0):
+        rr, cc = ski.draw.line(int(y0[0]),0,int(y1[0]),image.shape[1]-1)
+        for i in range(len(rr)):
+            if rr[i] == image.shape[0] or cc[i] == image.shape[1]:
+                break
+            image[rr[i], cc[i]] = (255, 0, 0)
+        imshow(im)
+        #imshow(image)    
+    
+
+    dist = dist.astype(np.int32)
+    return len(dist)
+
+
 '''
 Simple segmentation algo, something more advanced from class could be used 
 but this is easiest given the rigid formatting of the image
@@ -175,11 +232,11 @@ def note_detection(image, ycoord, xcoord):
 
     accums, cx, cy, radii = ski.transform.hough_circle_peaks(hough_res, hough_radii,min_xdistance=10, min_ydistance=10, threshold = 0.3)
 
-    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
-    image = ski.color.gray2rgb(image)
-    for center_y, center_x, radius in zip(cy, cx, radii):
-        circy, circx = ski.draw.circle_perimeter(center_y, center_x, radius, shape=image.shape)
-        image[circy, circx] = (255, 0, 0)
+    #fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(10, 4))
+    #image = ski.color.gray2rgb(image)
+    #for center_y, center_x, radius in zip(cy, cx, radii):
+    #    circy, circx = ski.draw.circle_perimeter(center_y, center_x, radius, shape=image.shape)
+    #    image[circy, circx] = (255, 0, 0)
 
     #ax.imshow(image, cmap=plt.cm.gray)
     #plt.show()
@@ -293,23 +350,27 @@ def detect_stem_end(image, x, y, radius, ycoord, stem_dir):
     tot1 = 0
     tot2 = 0
 
-    dist = x - stem_dir*radius
+    #imshow(image)
+
+    #dist = x - stem_dir*radius
 
     height, width = image.shape
 
-    for i in range(3):
-        for j in range(3):
-            if width > dist + 1 + i:
-                if image[point - stem_dir * (1 + j), dist + 1 + i] == False:
-                    tot1+=1
-            if 0 > dist - 1 - i:
-                if image[point - stem_dir * (1 + j), dist - 1 - i] == False:
-                    tot2+=1
-    
-    if tot1/9 > 0.5 or tot2/9 > 0.5:
-        return 8
+    cut = y + stem_dir*radius
+
+    if stem_dir == 1:
+        image = image[cut:height-1, :]
+        tail = eighth_note_lower(image)
     else:
+        image = image[0:cut, :]
+        tail = eighth_note_upper(image)
+
+    
+    if tail == 0:
         return 4
+    else:
+        return 8
+
 
 
 
