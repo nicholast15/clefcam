@@ -322,24 +322,27 @@ def imshow(image, isGray=True):
         plt.imshow(image)
     plt.show()
 
-def multimatch(im, templ, thres=0.75, min_dist=5):
-    #find multiple matches to a template and filter close results
-    res = cv.matchTemplate(im, templ, cv.TM_CCOEFF_NORMED)
-    matches = np.where(res >= thres)
-    coords = list(zip(matches[1], matches[0])) #swap coords to x,y
-    return coords
-    print(coords)
-
-    if not coords:
-        return [] #failed to find anything
-
-    #remove overlaps
-    coords = sorted(coords)
-    filt = [coords[0]]
-    for coord in coords[1:]:
-        if abs(coord[0] - filt[-1][0]) > min_dist:
-            filt.append(coord)
-    return filt
+#def multimatch(im, templ, thres=0.75, min_dist=5):
+#    #find multiple matches to a template and filter close results
+#    res = cv.matchTemplate(im, templ, cv.TM_CCOEFF_NORMED)
+#    min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
+#    print(max_val, templ.shape)
+#    imshow(res)
+#    matches = np.where(res >= thres)
+#    coords = list(zip(matches[1], matches[0])) #swap coords to x,y
+#    return coords
+#    print(coords)
+#
+#    if not coords:
+#        return [] #failed to find anything
+#
+#    #remove overlaps
+#    coords = sorted(coords)
+#    filt = [coords[0]]
+#    for coord in coords[1:]:
+#        if abs(coord[0] - filt[-1][0]) > min_dist:
+#            filt.append(coord)
+#    return filt
 
 '''
 input: limited span of a line containing key signature
@@ -348,8 +351,8 @@ outputs: number of sharps and flats detected
 def key_extract(im):
     thres = 0.75
     template_root = "Img/templates/"
-    sizes = [16, 32, 64, 128]       #template sizes to allow for diff res images
-    sharps, flats = [], []
+    sizes = [8, 16, 32]       #template sizes to allow for diff res images
+    sharp, flat = 0, 0
 
     for size in sizes:
         sharp_t = cv.imread(template_root + "sharp_" + str(size) + ".png", cv.IMREAD_GRAYSCALE)
@@ -360,10 +363,17 @@ def key_extract(im):
         if flat_t.shape[0] > im.shape[0] or flat_t.shape[1] > im.shape[1]:
             break
 
-        sharps = multimatch(im, sharp_t, thres)
-        flats = multimatch(im, flat_t, thres)
+        shval = template_match(im, sharp_t)
+        flval = template_match(im, flat_t)
+        #voting
+        if shval > flval:
+            sharp = sharp + 1
+        else:
+            flat = flat + 1
     
-    return len(sharps), len(flats)
+    print(sharp, flat)
+    
+    return "sharp" if sharp>flat else "flat"
 
 """
 Build ABC notation header
@@ -429,11 +439,13 @@ def main(filepath):
     print(clefid, clefloc) #coord uses cartesian, while the iamge follows image convention
     tsid, tsloc = templ_match(ski.util.invert(slices[0]), "ts")
     print(tsid, tsloc)
-    key_im = slices[0][:, clefloc[0][0]:tsloc[1][0]]
-    imshow(key_im)
-    print(key_extract(key_im))
-    #key signature will be between staff and TS
 
+    #find key signature, slice out section between clef and time
+    key_im = slices[0][:, clefloc[0][0]:tsloc[1][0]]
+    #imshow(key_im)
+    keysig = key_extract(ski.util.invert(key_im))
+    print(keysig) #TODO: count the number of elements
+    
     init = True #to change behaviour for the first line
     for s in slices:
         #crop out the time signature and clef, leaving only notes (and repeats which we will ignore)
@@ -503,7 +515,8 @@ def test():
              "sax.jpg", 
              "cradle.png", 
              "teehans.png",
-             "bass.png"
+             "bass.png",
+             "eflat.png"
     ] #fur elise is in 3/8, not supported. also too complicated
     for c in cases:
         main("Img/" + c)
