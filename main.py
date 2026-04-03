@@ -375,6 +375,38 @@ def key_extract(im):
     
     return "sharp" if sharp>flat else "flat"
 
+'''
+Input: section containing key signature
+Output: count of number of symbols
+'''
+def keysig_count(im, ycoord):
+    height, width = im.shape
+    thres = ski.filters.threshold_otsu(im)
+    im = im > thres
+
+    #create image with the staff lines
+    lines = np.ones((height, width), dtype=np.uint8) * 255
+    for i in range(len(ycoord)):
+        for j in range(width):
+            lines[ycoord[i]][j] = 0
+    #remove those lines on the image
+    nolines = ski.util.invert(np.clip(ski.util.invert(im) - ski.util.invert(lines),0,255))
+    imshow(nolines)
+
+    #remove elements connected to the edge- remainders of the clef
+    cleanbord = ski.segmentation.clear_border(nolines)
+    imshow(cleanbord)
+
+    #connect remainders and count
+    ksz = width//10 if width//10 > 2 else 2
+    kern = ski.morphology.disk(width//10)
+    closed = ski.morphology.dilation(cleanbord, kern)
+    imshow(closed)
+    labeled = ski.measure.label(closed)
+    count = len(ski.measure.regionprops(labeled))
+    return count
+
+
 """
 Build ABC notation header
 """
@@ -442,9 +474,11 @@ def main(filepath):
 
     #find key signature, slice out section between clef and time
     key_im = slices[0][:, clefloc[0][0]:tsloc[1][0]]
-    #imshow(key_im)
     keysig = key_extract(ski.util.invert(key_im))
-    print(keysig) #TODO: count the number of elements
+    print(keysig)
+    first_staff = lines[0:5] - borders[0]       #get the staff lines in this first slice, relative to its own coords
+    n_keysig = keysig_count(key_im, first_staff)
+    print(n_keysig)
     
     init = True #to change behaviour for the first line
     for s in slices:
@@ -508,7 +542,7 @@ def main(filepath):
         #break
 
 
-main("Img/blow.png")
+im = main("Img/blow.png")
 
 def test():
     cases = ["blow.png", 
